@@ -1,26 +1,23 @@
-var express = require("express")
+var express = require("express");
+const { room } = require("./rooms");
 let app = express()
 app.use(express.json());
 app.use(require("cors")())
 
+const crypto = require("crypto");
 
-let rooms = [
-    
-    {roomTitle:"bla bla bla", roomID:1234},
-    {roomTitle:"bla kmka", roomID:1234},
-        {roomTitle:"blakmla", roomID:1234},
-            {roomTitle:"bla bla bla", roomID:1234},
-                {roomTitle:"blakmkmkmka", roomID:1234},
+let rooms = new Map();
 
 
-];
-
+function getIPHash(ip) {
+  return crypto.createHash("sha256").update(ip).digest("hex").slice(0, 12);
+}
 
 
 app.post("/gr",(req,res)=>{
 
-
-    res.send(rooms.map((e)=>[e.roomTitle,e.roomID]))
+    
+    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}))
 
 
 
@@ -35,6 +32,51 @@ app.put("/nr",(req,res)=>{
     res.sendStatus(200);
 })
 
+
+
+app.post("/nr",(req,res)=>{
+
+    console.log(rooms);
+    console.log(req.body);
+    
+    
+const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const hashedIP = getIPHash(ip);
+
+    if(rooms.get(hashedIP)){
+
+        rooms.get(hashedIP).ppl=0; // empty the room so that when a new socket joins the room it's clean
+
+        io.to(hashedIP).emit("lv"); // leave the room, delete event listeners from the user
+
+        rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : 0;
+
+        rooms.get(hashedIP).ID = hashedIP;
+        rooms.get(hashedIP).title = req.body.rt;
+        io.in(hashedIP).fetchSockets().then((e)=>{ // get all the sockets in that room
+        
+            e.forEach((socket)=>{
+
+                socket.leave(hashedIP); // leaving the room from the server side
+            });
+            res.send({id:hashedIP});
+
+        })
+    }else{
+
+
+        const newRoom= room();
+        newRoom.title = req.body.rt ?? "";
+
+        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : "0";
+        newRoom.ID = hashedIP;
+        rooms.set(hashedIP,newRoom);
+        res.send({id:hashedIP, k:newRoom.key});
+
+        
+    }
+
+})
 
 
 
