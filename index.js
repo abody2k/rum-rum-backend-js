@@ -49,7 +49,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         io.to(hashedIP).emit("lv"); // leave the room, delete event listeners from the user
 
-        rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : 0;
+        rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
 
         rooms.get(hashedIP).ID = hashedIP;
         rooms.get(hashedIP).title = req.body.rt;
@@ -59,7 +59,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
                 socket.leave(hashedIP); // leaving the room from the server side
             });
-            res.send({id:hashedIP});
+        res.send({id:hashedIP, k:rooms.get(hashedIP).key});
 
         })
     }else{
@@ -68,7 +68,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const newRoom= room();
         newRoom.title = req.body.rt ?? "";
 
-        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : "0";
+        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
         newRoom.ID = hashedIP;
         rooms.set(hashedIP,newRoom);
         res.send({id:hashedIP, k:newRoom.key});
@@ -100,18 +100,56 @@ io.on("connection",(client)=>{
     console.log("new connection");
 
 
-    client.on("jr",(data)=>{
+    client.on("jr",(data,ack)=>{
 
 
         
         
         io.in(data).fetchSockets().then((sockets)=>{
             console.log(socket.length);
+            console.log(data);
+            let roomDetails = data.split(",");
+
+            let roomID = roomDetails[0];
+
+            let room = rooms.get(roomID);
+            if(room){ // the room does exist
+
+                if (room.ppl>=2){ // let the user join only if there is a sufficent number of seats
+                    ack("lv"); // leave the room to a new window
+                    return;
+                }
+
+                if(room.key){
+
+                    if(roomDetails[1] != room.key){
+
+                        ack("lv"); // leave the room to a new window
+                        return;
+                    }
+
+
+
+                }
+                
+                room.ppl++;
+                client.emit("nou",sockets.length);
+                io.to(data).emit("nou",sockets.length);
+                client.join(data);
+                
+
+                
+
+            }else{ // room does not exist
+                ack("lv"); // leave the room to a new window
+
+            }
+
             
-            // client.send("nou",sockets.length); // number of users
-            client.emit("nou",sockets.length)
-            io.to(data).emit("nou",sockets.length);
-            client.join(data);
+            
+            // client.send("this is my response to your message"); // number of users
+
+
         })
 
 
