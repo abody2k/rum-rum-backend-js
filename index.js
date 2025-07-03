@@ -71,7 +71,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : 0;
         newRoom.ID = hashedIP;
         rooms.set(hashedIP,newRoom);
-        res.send({id:hashedIP});
+        res.send({id:hashedIP, k:newRoom.key});
 
         
     }
