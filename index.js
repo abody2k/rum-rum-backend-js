@@ -113,6 +113,8 @@ io.on("connection",(client)=>{
             let roomDetails = data.split(",");
 
             let roomID = roomDetails[0];
+            console.log(roomID);
+            
 
             let room = rooms.get(roomID);
             if(room){ // the room does exist
@@ -133,11 +135,16 @@ io.on("connection",(client)=>{
 
 
                 }
+
+
                 
                 room.ppl++;
-                client.emit("nou",sockets.length);
-                io.to(data).emit("nou",sockets.length);
-                client.join(data);
+
+                
+                client.join(roomID);
+                ack(room.ppl);
+                io.to(roomID).emit("nou",room.ppl);
+
                 users.set(client.id,roomID);
                 
 
@@ -166,7 +173,6 @@ io.on("connection",(client)=>{
 
         
         io.to(data.split("،")[0]).except(client.id).emit("offer",data.split("،")[1]);
-        console.log(data.split("،")[1]);
         
     })
 
@@ -174,14 +180,12 @@ io.on("connection",(client)=>{
 
         
         io.to(data.split("،")[0]).except(client.id).emit("ans",data.split("،")[1]);
-        console.log(data.split("،")[1]);
         
     })
         client.on("can",(data)=>{
 
         
         io.to(data.split("،")[0]).except(client.id).emit("can",data.split("،")[1]);
-        console.log(data.split("،")[1]);
         
     })
     // client.on("lv")
@@ -189,10 +193,7 @@ io.on("connection",(client)=>{
     client.on("disconnect",(e)=>{
 
      
-        console.log(client.id);
-        console.log(users);
-        console.log(rooms);
-        
+  
         
         
         if(!client.id){
@@ -200,12 +201,16 @@ io.on("connection",(client)=>{
         }
         
         
-        
+try {
+            
         io.to(users.get(client.id)).emit("lft") // someone left
         rooms.get(users.get(client.id)).ppl--;
         if(rooms.get(users.get(client.id)).ppl<=0)
             rooms.delete(users.get(client.id));
         users.delete(client.id);
+} catch (error) {
+    
+}
         
 
         console.log("somebodyy just left");
