@@ -17,7 +17,7 @@ function getIPHash(ip) {
 app.post("/gr",(req,res)=>{
 
     
-    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl]}))
+    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}))
 
 
 
@@ -52,7 +52,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : 0;
 
         rooms.get(hashedIP).ID = hashedIP;
-
+        rooms.get(hashedIP).title = req.body.rt;
         io.in(hashedIP).fetchSockets().then((e)=>{ // get all the sockets in that room
         
             e.forEach((socket)=>{
@@ -68,7 +68,7 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const newRoom= room();
         newRoom.title = req.body.rt ?? "";
 
-        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : 0;
+        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : "0";
         newRoom.ID = hashedIP;
         rooms.set(hashedIP,newRoom);
         res.send({id:hashedIP, k:newRoom.key});
