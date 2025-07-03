@@ -7,6 +7,8 @@ app.use(require("cors")())
 const crypto = require("crypto");
 
 let rooms = new Map();
+let users = new Map();
+
 
 
 function getIPHash(ip) {
@@ -136,6 +138,7 @@ io.on("connection",(client)=>{
                 client.emit("nou",sockets.length);
                 io.to(data).emit("nou",sockets.length);
                 client.join(data);
+                users.set(client.id,roomID);
                 
 
                 
@@ -183,7 +186,27 @@ io.on("connection",(client)=>{
     })
     // client.on("lv")
 
-    client.on("disconnect",()=>{
+    client.on("disconnect",(e)=>{
+
+     
+        console.log(client.id);
+        console.log(users);
+        console.log(rooms);
+        
+        
+        
+        if(!client.id){
+            return;
+        }
+        
+        
+        
+        io.to(users.get(client.id)).emit("lft") // someone left
+        rooms.get(users.get(client.id)).ppl--;
+        if(rooms.get(users.get(client.id)).ppl<=0)
+            rooms.delete(users.get(client.id));
+        users.delete(client.id);
+        
 
         console.log("somebodyy just left");
         
