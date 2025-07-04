@@ -8,7 +8,7 @@ const crypto = require("crypto");
 
 let rooms = new Map();
 let users = new Map();
-
+let roomsUpdated= false;
 
 
 function getIPHash(ip) {
@@ -19,7 +19,7 @@ function getIPHash(ip) {
 app.post("/gr",(req,res)=>{
 
     
-    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}))
+    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}));
 
 
 
@@ -78,6 +78,8 @@ const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         
     }
 
+    roomsUpdated=true;
+
 })
 
 
@@ -98,11 +100,19 @@ io.on("connection",(client)=>{
 
 
 
-
+    
     console.log("new connection");
 
+    client.on("jrms",(d)=>{
+        console.log("user joined room");
+        
+        client.join("rms");
+
+    })
 
     client.on("jr",(data,ack)=>{
+
+        client.leave("rms");
 
 
         
@@ -146,6 +156,7 @@ io.on("connection",(client)=>{
                 io.to(roomID).emit("nou",room.ppl);
 
                 users.set(client.id,roomID);
+                roomsUpdated=true;
                 
 
                 
@@ -200,7 +211,8 @@ io.on("connection",(client)=>{
         if(rooms.get(users.get(client.id)).ppl<=0) // if it's empty delete the room
         rooms.delete(users.get(client.id));
         users.delete(client.id); //delete the user info as the user might not join a room for a while and this data is just redundant
-
+        roomsUpdated = true;
+        client.join("rms");
         }else{ // ignore it
 
 
@@ -226,6 +238,7 @@ try {
         if(rooms.get(users.get(client.id)).ppl<=0)
             rooms.delete(users.get(client.id));
         users.delete(client.id);
+        roomsUpdated=true;
 
 
 } catch (error) {
@@ -244,5 +257,15 @@ web.listen(3000,()=>{
 
 
     console.log("Server is up and listening!");
+
+    setInterval(() => {
+
+        if(!roomsUpdated)
+            return;
+        console.log("Sending rooms ...");
+        
+        roomsUpdated = false;
+        io.to("rms").emit("rms",[...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}));
+    }, 1000 * 30);
     
 })
