@@ -188,7 +188,25 @@ io.on("connection",(client)=>{
         io.to(data.split("،")[0]).except(client.id).emit("can",data.split("،")[1]);
         
     })
-    // client.on("lv")
+    client.on("lv",(data)=>{
+
+        // check if the room exist
+        const room = rooms.get(users.get(client.id));
+        if(room){
+
+            //take the user out and update room info
+        io.to(users.get(client.id)).emit("lft") // someone left
+        rooms.get(users.get(client.id)).ppl--; // decrease ppl in room 
+        if(rooms.get(users.get(client.id)).ppl<=0) // if it's empty delete the room
+        rooms.delete(users.get(client.id));
+        users.delete(client.id); //delete the user info as the user might not join a room for a while and this data is just redundant
+
+        }else{ // ignore it
+
+
+        }
+
+    })
 
     client.on("disconnect",(e)=>{
 
@@ -208,6 +226,8 @@ try {
         if(rooms.get(users.get(client.id)).ppl<=0)
             rooms.delete(users.get(client.id));
         users.delete(client.id);
+
+
 } catch (error) {
     
 }
