@@ -1,10 +1,22 @@
 var express = require("express");
 const { room } = require("./rooms");
 let app = express()
+let web = require("http").createServer(app)
+const { Server } = require('socket.io');
+let io =  new Server(web)
+
+// {
+//     cors:{
+//         origin:"*"
+//     }
+// }
+
 app.use(express.json());
 app.use(require("cors")())
+// app.use(express.static())
 
 const crypto = require("crypto");
+const path = require("path");
 
 let rooms = new Map();
 let users = new Map();
@@ -16,84 +28,25 @@ function getIPHash(ip) {
 }
 
 
-app.post("/gr",(req,res)=>{
 
-    
-    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}));
-
+const DIST_PATH = path.join(__dirname, 'rum-rum',"browser");
+app.use(express.static(DIST_PATH));
 
 
-})
-
-
-app.put("/nr",(req,res)=>{
-
-
-    console.log(req.body);
-    
-    res.sendStatus(200);
-})
-
-
-
-app.post("/nr",(req,res)=>{
-
-    console.log(rooms);
-    console.log(req.body);
-    
-    
-const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const hashedIP = getIPHash(ip);
-
-    if(rooms.get(hashedIP)){
-
-        rooms.get(hashedIP).ppl=0; // empty the room so that when a new socket joins the room it's clean
-
-        io.to(hashedIP).emit("lv"); // leave the room, delete event listeners from the user
-
-        rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
-
-        rooms.get(hashedIP).ID = hashedIP;
-        rooms.get(hashedIP).title = req.body.rt;
-        io.in(hashedIP).fetchSockets().then((e)=>{ // get all the sockets in that room
-        
-            e.forEach((socket)=>{
-
-                socket.leave(hashedIP); // leaving the room from the server side
-            });
-        res.send({id:hashedIP, k:rooms.get(hashedIP).key});
-
-        })
-    }else{
-
-
-        const newRoom= room();
-        newRoom.title = req.body.rt ?? "";
-
-        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
-        newRoom.ID = hashedIP;
-        rooms.set(hashedIP,newRoom);
-        res.send({id:hashedIP, k:newRoom.key});
-
-        
-    }
-
-    roomsUpdated=true;
-
-})
+app.get("/{*splat}", (req, res) => {
+  res.sendFile(path.join(DIST_PATH, 'index.html'));
+});
 
 
 
 
-let socket = require("socket.io").Server
-let web = require("http").createServer(app)
-let io = new socket(web,{
-    cors:{
-            origin: 'http://localhost:4200', // 
-    methods: ['GET', 'POST'],
-    credentials: true
-    }
-})
+
+
+
+
+
+
+
 
 
 io.on("connection",(client)=>{
@@ -118,7 +71,6 @@ io.on("connection",(client)=>{
         
         
         io.in(data).fetchSockets().then((sockets)=>{
-            console.log(socket.length);
             console.log(data);
             let roomDetails = data.split(",");
 
@@ -251,6 +203,85 @@ try {
     })
     
 })
+
+app.post("/gr",(req,res)=>{
+
+    
+    res.send([...rooms.values()].map((e)=>{return[e.title,e.ID,e.ppl,e.key? true : false]}));
+
+
+
+})
+
+
+app.put("/nr",(req,res)=>{
+
+
+    console.log(req.body);
+    
+    res.sendStatus(200);
+})
+
+
+
+app.post("/nr",(req,res)=>{
+
+    console.log(rooms);
+    console.log(req.body);
+    
+    
+const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const hashedIP = getIPHash(ip);
+
+    if(rooms.get(hashedIP)){
+
+        rooms.get(hashedIP).ppl=0; // empty the room so that when a new socket joins the room it's clean
+
+        io.to(hashedIP).emit("lv"); // leave the room, delete event listeners from the user
+
+        rooms.get(hashedIP).key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
+
+        rooms.get(hashedIP).ID = hashedIP;
+        rooms.get(hashedIP).title = req.body.rt;
+        io.in(hashedIP).fetchSockets().then((e)=>{ // get all the sockets in that room
+        
+            e.forEach((socket)=>{
+
+                socket.leave(hashedIP); // leaving the room from the server side
+            });
+        res.send({id:hashedIP, k:rooms.get(hashedIP).key});
+
+        })
+    }else{
+
+
+        const newRoom= room();
+        newRoom.title = req.body.rt ?? "";
+
+        newRoom.key = req.body.rk == 1 ?  (Math.random()*10000).toString("24").replace(".","") : null;
+        newRoom.ID = hashedIP;
+        rooms.set(hashedIP,newRoom);
+        res.send({id:hashedIP, k:newRoom.key});
+
+        
+    }
+
+    roomsUpdated=true;
+
+})
+
+
+// app.get("*",(req,res)=>{
+
+
+
+// })
+
+
+// app.use(express.static("rum-rum/browser"));
+
+
+
 
 web.listen(3000,()=>{
 
